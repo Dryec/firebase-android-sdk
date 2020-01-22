@@ -86,7 +86,7 @@ public final class ServerTimestampValue extends FieldValue {
   public int compareTo(FieldValue o) {
     if (o instanceof ServerTimestampValue) {
       return localWriteTime.compareTo(((ServerTimestampValue) o).localWriteTime);
-    } else if (o instanceof TimestampValue) {
+    } else if (o.typeOrder() == TYPE_ORDER_TIMESTAMP) {
       // Server timestamps come after all concrete timestamps.
       return 1;
     } else {
