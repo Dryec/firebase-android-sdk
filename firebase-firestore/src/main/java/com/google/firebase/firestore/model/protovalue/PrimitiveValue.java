@@ -54,7 +54,7 @@ public class PrimitiveValue extends FieldValue {
   }
 
   @Nullable
-  Object convertValue(Value value) {
+  private Object convertValue(Value value) {
     switch (value.getValueTypeCase()) {
       case NULL_VALUE:
         return null;

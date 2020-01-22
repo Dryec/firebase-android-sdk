@@ -44,22 +44,6 @@ public class ObjectValue extends PrimitiveValue {
     return EMPTY_MAP_VALUE;
   }
 
-  @Override
-  public int typeOrder() {
-    return TYPE_ORDER_OBJECT;
-  }
-
-  @Nullable
-  @Override
-  public Object value() {
-    return convertValue(internalValue);
-  }
-
-  /** Recursively extracts the FieldPaths that are set in this ObjectValue. */
-  public FieldMask getFieldMask() {
-    return extractFieldMask(internalValue.getMapValue());
-  }
-
   /**
    * Returns the value at the given path or null.
    *
@@ -81,9 +65,9 @@ public class ObjectValue extends PrimitiveValue {
         : null;
   }
 
-  /** Creates a ObjectValue.Builder instance that is based on the current value. */
-  public ObjectValue.Builder toBuilder() {
-    return new Builder(internalValue.getMapValue());
+  /** Recursively extracts the FieldPaths that are set in this ObjectValue. */
+  public FieldMask getFieldMask() {
+    return extractFieldMask(internalValue.getMapValue());
   }
 
   private FieldMask extractFieldMask(MapValue value) {
@@ -108,6 +92,11 @@ public class ObjectValue extends PrimitiveValue {
       }
     }
     return FieldMask.fromSet(fields);
+  }
+
+  /** Creates a ObjectValue.Builder instance that is based on the current value. */
+  public ObjectValue.Builder toBuilder() {
+    return new Builder(internalValue.getMapValue());
   }
 
   /**
