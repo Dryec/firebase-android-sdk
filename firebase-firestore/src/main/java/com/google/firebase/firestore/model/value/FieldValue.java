@@ -45,17 +45,17 @@ import com.google.firestore.v1.Value;
  */
 public abstract class FieldValue implements Comparable<FieldValue> {
   /** The order of types in Firestore; this order is defined by the backend. */
-  protected static final int TYPE_ORDER_NULL = 0;
+  public static final int TYPE_ORDER_NULL = 0;
 
-  protected static final int TYPE_ORDER_BOOLEAN = 1;
-  protected static final int TYPE_ORDER_NUMBER = 2;
-  protected static final int TYPE_ORDER_TIMESTAMP = 3;
-  protected static final int TYPE_ORDER_STRING = 4;
-  protected static final int TYPE_ORDER_BLOB = 5;
-  protected static final int TYPE_ORDER_REFERENCE = 6;
-  protected static final int TYPE_ORDER_GEOPOINT = 7;
-  protected static final int TYPE_ORDER_ARRAY = 8;
-  protected static final int TYPE_ORDER_OBJECT = 9;
+  public static final int TYPE_ORDER_BOOLEAN = 1;
+  public static final int TYPE_ORDER_NUMBER = 2;
+  public static final int TYPE_ORDER_TIMESTAMP = 3;
+  public static final int TYPE_ORDER_STRING = 4;
+  public static final int TYPE_ORDER_BLOB = 5;
+  public static final int TYPE_ORDER_REFERENCE = 6;
+  public static final int TYPE_ORDER_GEOPOINT = 7;
+  public static final int TYPE_ORDER_ARRAY = 8;
+  public static final int TYPE_ORDER_OBJECT = 9;
 
   public static FieldValue of(Value value) {
     if (value.getValueTypeCase() == Value.ValueTypeCase.MAP_VALUE) {

@@ -20,6 +20,7 @@ import androidx.annotation.Nullable;
 import com.google.firebase.firestore.model.FieldPath;
 import com.google.firebase.firestore.model.mutation.FieldMask;
 import com.google.firebase.firestore.model.value.FieldValue;
+import com.google.firebase.firestore.util.ProtoUtil;
 import com.google.firestore.v1.MapValue;
 import com.google.firestore.v1.Value;
 import java.util.HashSet;
@@ -36,7 +37,7 @@ public class ObjectValue extends PrimitiveValue {
 
   public ObjectValue(Value value) {
     super(value);
-    hardAssert(isType(value, Value.ValueTypeCase.MAP_VALUE), "..");
+    hardAssert(ProtoUtil.isType(value, TYPE_ORDER_OBJECT), "..");
   }
 
   public static ObjectValue emptyObject() {
@@ -56,16 +57,42 @@ public class ObjectValue extends PrimitiveValue {
 
   /** Recursively extracts the FieldPaths that are set in this ObjectValue. */
   public FieldMask getFieldMask() {
-    return getFieldMask(internalValue.getMapValue());
+    return extractFieldMask(internalValue.getMapValue());
   }
 
-  private FieldMask getFieldMask(MapValue value) {
+  /**
+   * Returns the value at the given path or null.
+   *
+   * @param fieldPath the path to search
+   * @return The value at the path or if there it doesn't exist.
+   */
+  public @Nullable FieldValue get(FieldPath fieldPath) {
+    Value value = internalValue;
+
+    for (int i = 0; i < fieldPath.length() - 1; ++i) {
+      value = value.getMapValue().getFieldsMap().get(fieldPath.getSegment(i));
+      if (!ProtoUtil.isType(value, TYPE_ORDER_OBJECT)) {
+        return null;
+      }
+    }
+
+    return value.getMapValue().containsFields(fieldPath.getLastSegment())
+        ? FieldValue.of(value.getMapValue().getFieldsOrThrow(fieldPath.getLastSegment()))
+        : null;
+  }
+
+  /** Creates a ObjectValue.Builder instance that is based on the current value. */
+  public ObjectValue.Builder toBuilder() {
+    return new Builder(internalValue.getMapValue());
+  }
+
+  private FieldMask extractFieldMask(MapValue value) {
     Set<FieldPath> fields = new HashSet<>();
     for (Map.Entry<String, Value> entry : value.getFieldsMap().entrySet()) {
       FieldPath currentPath = FieldPath.fromSingleSegment(entry.getKey());
       Value child = entry.getValue();
-      if (isType(child, Value.ValueTypeCase.MAP_VALUE)) {
-        FieldMask nestedMask = getFieldMask(child.getMapValue());
+      if (ProtoUtil.isType(child, TYPE_ORDER_OBJECT)) {
+        FieldMask nestedMask = extractFieldMask(child.getMapValue());
         Set<FieldPath> nestedFields = nestedMask.getMask();
         if (nestedFields.isEmpty()) {
           // Preserve the empty map by adding it to the FieldMask.
@@ -83,25 +110,6 @@ public class ObjectValue extends PrimitiveValue {
     return FieldMask.fromSet(fields);
   }
 
-  public @Nullable FieldValue get(FieldPath path) {
-    if (path.isEmpty()) {
-      return this;
-    }
-
-    String childName = path.getFirstSegment();
-    @Nullable Value value = this.internalValue.getMapValue().getFieldsMap().get(childName);
-    int i;
-    for (i = 1; isType(value, Value.ValueTypeCase.MAP_VALUE) && i < path.length(); ++i) {
-      value = value.getMapValue().getFieldsMap().get(path.getSegment(i));
-    }
-    return value != null && i == path.length() ? FieldValue.of(value) : null;
-  }
-
-  /** Creates a ObjectValue.Builder instance that is based on the current value. */
-  public ObjectValue.Builder toBuilder() {
-    return new Builder(internalValue.getMapValue());
-  }
-
   /**
    * An ObjectValue.Builder provides APIs to set and delete fields from an ObjectValue. All
    * operations mutate the existing instance.
@@ -112,10 +120,6 @@ public class ObjectValue extends PrimitiveValue {
 
     Builder(MapValue value) {
       this.fieldsMap = value.toBuilder();
-    }
-
-    public static Builder emptyBuilder() {
-      return new Builder(MapValue.getDefaultInstance());
     }
 
     /**
@@ -150,7 +154,7 @@ public class ObjectValue extends PrimitiveValue {
       } else {
         @Nullable Value child = fieldsMap.getFieldsOrDefault(path.getFirstSegment(), null);
         MapValue.Builder nestedMap;
-        if (isType(child, Value.ValueTypeCase.MAP_VALUE)) {
+        if (ProtoUtil.isType(child, TYPE_ORDER_OBJECT)) {
           nestedMap = child.getMapValue().toBuilder();
         } else {
           nestedMap = MapValue.newBuilder();
@@ -163,19 +167,17 @@ public class ObjectValue extends PrimitiveValue {
 
     private void deleteRecursively(MapValue.Builder fieldsMap, FieldPath path) {
       if (path.length() == 1) {
-
         fieldsMap.removeFields(path.getFirstSegment());
       } else {
         @Nullable Value child = fieldsMap.getFieldsOrDefault(path.getFirstSegment(), null);
         MapValue.Builder nestedMap;
-        if (isType(child, Value.ValueTypeCase.MAP_VALUE)) {
+        if (ProtoUtil.isType(child, TYPE_ORDER_OBJECT)) {
           nestedMap = child.getMapValue().toBuilder();
           deleteRecursively(nestedMap, path.popFirst());
           fieldsMap.putFields(
               path.getFirstSegment(), Value.newBuilder().setMapValue(nestedMap).build());
         } else {
           // Don't actually change a primitive value to an object for a delete.
-          return;
         }
       }
     }
